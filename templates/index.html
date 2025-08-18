@@ -11,15 +11,20 @@
   <div class="container">
     <header>
       <h1>SURAT SUARA</h1>
-      <div class="question">
-        <strong>APAKAH ANDA SETUJU ATAU TIDAK SETUJU<br>SDR. FAISHA SUDARLIN, M.TH<br>SEBAGAI PENDETA KEDUA GKJ PAMULANG?</strong>
-      </div>
+      {{if .Name}}
+        <div class="greeting">
+          <h2>Selamat Datang, {{.Name}}!</h2>
+          {{if .AlreadyUsed}}
+            <p class="danger">Kode sudah digunakan.</p>
+          {{end}}
+        </div>
+      {{end}}
     </header>
 
     <main>
       <div class="left">
         <div class="photo">
-          <img src="https://via.placeholder.com/220x260.png?text=Foto+Calon" alt="Foto calon">
+          <img src="/static/faisha.jpg" alt="Foto calon">
         </div>
         <div class="meta">
           <div class="calon">Calon Pendeta GKJ Pamulang</div>
@@ -28,79 +33,191 @@
       </div>
 
       <div class="right">
-        <div class="topbox">
+        <div class="topbox" style="text-align: center;">
           {{if .BeforeStart}}
-            <div class="notice">Pemilihan belum dimulai</div>
-            <div id="countdown" data-start="{{.StartISO}}" data-end="{{.EndISO}}"></div>
+            <div class="notice">Pemilihan belum dimulai<br><br>
+              <div id="countdown" data-start="{{.StartISO}}" data-end="{{.EndISO}}"></div>
+            </div>
           {{else if .AfterEnd}}
             <div class="notice">Pemilihan ditutup</div>
           {{else}}
-            <div id="greeting">
-              {{if .Name}}
-                <h2>Selamat, {{.Name}}!</h2>
-                {{if .AlreadyUsed}}
-                  <p class="danger">Kode sudah digunakan.</p>
-                {{end}}
-              {{else}}
+            <div class="question">
+              <strong>APAKAH ANDA SETUJU ATAU TIDAK SETUJU<br>SDR. FAISHA SUDARLIN, M.TH<br>SEBAGAI PENDETA KEDUA GKJ PAMULANG?</strong>
+            </div>
+            {{if not .Name}}
+              <div id="code-entry">
                 <form id="codeForm" method="get" action="/">
                   <label>Masukkan kode unik:</label>
                   <input type="text" name="code" placeholder="Kode unik" required>
                   <button type="submit">Masuk</button>
                 </form>
-              {{end}}
-            </div>
+              </div>
+            {{end}}
           {{end}}
         </div>
 
-        <div class="choices">
-          <form id="voteForm" method="post" action="/vote">
-            <input type="hidden" name="code" value="{{.Code}}">
-            <div class="choiceBox big" data-choice="setuju" onclick="selectChoice('setuju')">
-              <input type="radio" id="setuju" name="choice" value="setuju" {{if .AlreadyUsed}}disabled{{end}}>
-              <label for="setuju" class="choiceLabel">SETUJU</label>
+        {{if not .BeforeStart}}
+        <div class="choices" style="display: flex; justify-content: space-between; margin-top: 20px;">
+          <div style="width: 100%;">
+            <div style="display: flex; justify-content: space-around;">
+              <div class="choiceBox big" data-choice="setuju" onclick="submitVote('setuju')" style="margin-right: 10px; cursor: pointer;">
+                <input type="radio" id="setuju" name="choice" value="setuju" {{if .AlreadyUsed}}disabled{{end}} style="display: none;">
+                <label for="setuju" class="choiceLabel">SETUJU</label>
+              </div>
+              <div class="choiceBox big" data-choice="tidak_setuju" onclick="submitVote('tidak_setuju')" style="margin-left: 10px; cursor: pointer;">
+                <input type="radio" id="tdksetuju" name="choice" value="tidak_setuju" {{if .AlreadyUsed}}disabled{{end}} style="display: none;">
+                <label for="tdksetuju" class="choiceLabel">TIDAK<br>SETUJU</label>
+              </div>
             </div>
-            <div class="choiceBox big" data-choice="tidak_setuju" onclick="selectChoice('tidak_setuju')">
-              <input type="radio" id="tdksetuju" name="choice" value="tidak_setuju" {{if .AlreadyUsed}}disabled{{end}}>
-              <label for="tdksetuju" class="choiceLabel">TIDAK<br>SETUJU</label>
-            </div>
-            <div class="submitRow">
-              {{if .Code}}
-                <button type="button" id="submitBtn" {{if .AlreadyUsed}}disabled{{end}}>Kirim Suara</button>
-              {{else}}
-                <p>Masukkan kode dulu untuk memilih.</p>
-              {{end}}
-            </div>
-          </form>
+            {{if not .Code}}
+            <p style="text-align: center; margin-top: 20px;">Masukkan kode dulu untuk memilih.</p>
+            {{end}}
+          </div>
         </div>
+        {{end}}
 
       </div>
     </main>
 
     <footer>
-      <p>Powered by GKJ Pamulang — Sistem Pemilihan</p>
+      <p>Panitia Pemilihan Pendeta Kedua GKJ Pamulang</p>
     </footer>
   </div>
 
   <!-- Confirmation modal -->
-  <div id="confirmModal" class="modal" aria-hidden="true">
+  <div id="confirmModal" class="modal" tabindex="-1" role="dialog" aria-hidden="true">
     <div class="modal-content">
       <h3>Konfirmasi Suara</h3>
-      <p id="selectedText">Anda memilih: <strong></strong></p>
-      <div class="modal-actions">
-        <button id="confirmYes">Ya, kirim</button>
-        <button id="confirmNo">Batal</button>
+      <p>Anda yakin memilih <span id="modalChoice"></span>?</p>
+      <div class="modal-buttons">
+        <button id="confirmNo" class="btn-cancel">Batal</button>
+        <button id="confirmYes" class="btn-confirm">Ya, Saya Yakin</button>
       </div>
     </div>
   </div>
 
-<script>
-(function(){
-  // countdown logic
-  var cd = document.getElementById('countdown');
-  if (cd) {
+  <style>
+    /* Modal styles */
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0,0,0,0.5);
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+    .modal.show {
+      opacity: 1;
+    }
+    .modal-content {
+      background-color: #fefefe;
+      margin: 15% auto;
+      padding: 20px;
+      border: 1px solid #888;
+      width: 80%;
+      max-width: 500px;
+      border-radius: 5px;
+      text-align: center;
+    }
+    .modal-buttons {
+      margin-top: 20px;
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+    }
+    .btn-confirm, .btn-cancel {
+      padding: 8px 20px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    .btn-confirm {
+      background-color: #4CAF50;
+      color: white;
+    }
+    .btn-cancel {
+      background-color: #f44336;
+      color: white;
+    }
+  </style>
+  <script>
+  // Global variables
+  var currentChoice = '';
+  var modal, modalChoice, confirmYes, confirmNo;
+  
+  // Initialize everything when the page loads
+  document.addEventListener('DOMContentLoaded', function() {
+    // Get modal elements
+    modal = document.getElementById('confirmModal');
+    modalChoice = document.getElementById('modalChoice');
+    confirmYes = document.getElementById('confirmYes');
+    confirmNo = document.getElementById('confirmNo');
+    
+    // Set up event listeners
+    setupModal();
+    setupCountdown();
+  });
+  
+  // Set up modal event listeners
+  function setupModal() {
+    if (!modal) return;
+    
+    // Handle confirm button click
+    if (confirmYes) {
+      confirmYes.onclick = function() {
+        if (!currentChoice) return;
+        
+        var form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '/vote';
+        
+        var urlParams = new URLSearchParams(window.location.search);
+        var code = urlParams.get('code');
+        
+        var codeInput = document.createElement('input');
+        codeInput.type = 'hidden';
+        codeInput.name = 'code';
+        codeInput.value = code || '';
+        
+        var choiceInput = document.createElement('input');
+        choiceInput.type = 'hidden';
+        choiceInput.name = 'choice';
+        choiceInput.value = currentChoice;
+        
+        form.appendChild(codeInput);
+        form.appendChild(choiceInput);
+        document.body.appendChild(form);
+        form.submit();
+      };
+    }
+
+    // Handle cancel button click
+    if (confirmNo) {
+      confirmNo.onclick = closeModal;
+    }
+
+    // Close modal when clicking outside of it
+    modal.onclick = function(event) {
+      if (event.target === modal) {
+        closeModal();
+      }
+    };
+  }
+  
+  // Set up countdown timer
+  function setupCountdown() {
+    var cd = document.getElementById('countdown');
+    if (!cd) return;
+    
     var start = new Date(cd.dataset.start);
     var end = new Date(cd.dataset.end);
-    function update() {
+    
+    function updateCountdown() {
       var now = new Date();
       if (now > end) {
         cd.innerText = "Pemilihan ditutup.";
@@ -109,64 +226,238 @@
       var diff = start - now;
       if (diff <= 0) {
         cd.innerText = "Pemilihan sudah dibuka. Silakan muat ulang halaman.";
+        location.reload();
         return;
       }
       var days = Math.floor(diff / (1000*60*60*24));
       var hrs = Math.floor((diff % (1000*60*60*24)) / (1000*60*60));
       var min = Math.floor((diff % (1000*60*60)) / (1000*60));
       var sec = Math.floor((diff % (1000*60)) / 1000);
-      cd.innerText = "Waktu buka: " + days + "d " + hrs + "j " + min + "m " + sec + "s";
+      cd.innerText = "Pemilihan di mulai dalam : " + days + "hari " + hrs + "jam " + min + "menit " + sec + "detik";
     }
-    update();
-    setInterval(update, 1000);
+    
+    updateCountdown();
+    setInterval(updateCountdown, 1000);
   }
-
-  // modal logic
-  var selected = null;
-  window.selectChoice = function(choice) {
-    selected = choice;
-    // set radio checked
-    if (choice === 'setuju') {
-      document.getElementById('setuju').checked = true;
-    } else {
-      document.getElementById('tdksetuju').checked = true;
+  
+  // Function to close the modal
+  function closeModal() {
+    if (modal) {
+      modal.style.display = 'none';
+      document.body.classList.remove('modal-open');
+      modal.classList.remove('show');
+      
+      // Re-enable scrolling
+      document.body.style.overflow = 'auto';
+      
+      // Remove the escape key listener
+      document.removeEventListener('keydown', handleEscapeKey);
     }
-    // highlight
-    document.querySelectorAll('.choiceBox').forEach(function(el){
-      el.classList.toggle('selected', el.dataset.choice === choice);
-    });
   }
-
-  var submitBtn = document.getElementById('submitBtn');
-  var modal = document.getElementById('confirmModal');
-  var selectedText = document.querySelector('#selectedText strong');
-  if (submitBtn) {
-    submitBtn.addEventListener('click', function(){
-      if (!selected) {
-        alert("Pilih terlebih dahulu.");
-        return;
+  
+  // Function to show the modal
+  function showModal() {
+    if (modal) {
+      // Disable scrolling on the body
+      document.body.style.overflow = 'hidden';
+      document.body.classList.add('modal-open');
+      
+      // Show the modal
+      modal.style.display = 'flex';
+      
+      // Force reflow to enable transition
+      void modal.offsetWidth;
+      
+      // Add show class for transition
+      modal.classList.add('show');
+      
+      // Add escape key listener
+      document.addEventListener('keydown', handleEscapeKey);
+    }
+  }
+  
+  // Handle escape key press
+  function handleEscapeKey(event) {
+    if (event.key === 'Escape') {
+      closeModal();
+    }
+  }
+  
+  // Global function to show the modal when voting
+  window.submitVote = function(choice) {
+    console.log('submitVote called with choice:', choice);
+    
+    var urlParams = new URLSearchParams(window.location.search);
+    var code = urlParams.get('code');
+    
+    if (!code) {
+      alert("Silakan masukkan kode terlebih dahulu.");
+      return;
+    }
+    
+    currentChoice = choice;
+    if (modalChoice) {
+      modalChoice.textContent = choice === 'setuju' ? 'SETUJU' : 'TIDAK SETUJU';
+    }
+    
+    showModal();
+  };
+  
+  function initializeModal() {
+    modal = document.getElementById('confirmModal');
+    if (modal) {
+      modalChoice = document.getElementById('modalChoice');
+      confirmYes = document.getElementById('confirmYes');
+      confirmNo = document.getElementById('confirmNo');
+      
+      // Handle confirm button click
+      if (confirmYes) {
+        confirmYes.addEventListener('click', function() {
+          if (!currentChoice) return;
+          
+          var form = document.createElement('form');
+          form.method = 'POST';
+          form.action = '/vote';
+          
+          var urlParams = new URLSearchParams(window.location.search);
+          var code = urlParams.get('code');
+          
+          var codeInput = document.createElement('input');
+          codeInput.type = 'hidden';
+          codeInput.name = 'code';
+          codeInput.value = code || '';
+          
+          var choiceInput = document.createElement('input');
+          choiceInput.type = 'hidden';
+          choiceInput.name = 'choice';
+          choiceInput.value = currentChoice;
+          
+          form.appendChild(codeInput);
+          form.appendChild(choiceInput);
+          document.body.appendChild(form);
+          form.submit();
+        });
       }
-      selectedText.innerText = selected === 'setuju' ? 'SETUJU' : 'TIDAK SETUJU';
-      modal.setAttribute('aria-hidden', 'false');
-      modal.classList.add('open');
-    });
-  }
-  document.getElementById('confirmNo').addEventListener('click', function(){
-    modal.setAttribute('aria-hidden', 'true');
-    modal.classList.remove('open');
-  });
-  document.getElementById('confirmYes').addEventListener('click', function(){
-    // submit the form
-    document.querySelector('input[name="choice"][value="'+selected+'"]').checked = true;
-    document.getElementById('voteForm').submit();
-  });
 
-  // If success param present in URL, show a message
-  var params = new URLSearchParams(location.search);
-  if (params.get('success') === '1') {
-    alert("Suara Anda telah tercatat. Terima kasih.");
+      // Handle cancel button click
+      if (confirmNo) {
+        confirmNo.addEventListener('click', function() {
+          closeModal();
+        });
+      }
+
+      // Close modal when clicking outside of it
+      modal.addEventListener('click', function(event) {
+        if (event.target === modal) {
+          closeModal();
+        }
+      });
+      
+      // Function to close the modal
+      function closeModal() {
+        modal.style.display = 'none';
+        document.body.style.overflow = 'auto'; // Re-enable scrolling
+      }
+    }
   }
-})();
+  
+  // Global function to show the modal
+  window.submitVote = function(choice) {
+    console.log('submitVote called with choice:', choice);
+    
+    var urlParams = new URLSearchParams(window.location.search);
+    var code = urlParams.get('code');
+    
+    if (!code) {
+      console.log('No code found in URL');
+      alert("Silakan masukkan kode terlebih dahulu.");
+      return;
+    }
+    
+    currentChoice = choice;
+    if (modalChoice) {
+      modalChoice.textContent = choice === 'setuju' ? 'SETUJU' : 'TIDAK SETUJU';
+    }
+    
+    // Show the modal
+    console.log('Showing modal');
+    showModal();
+  };
+
+  function getCodeFromUrl() {
+    // Check URL path first (e.g., /Ht67h)
+    var pathCode = window.location.pathname.substring(1).trim();
+    if (pathCode && pathCode !== '/') {
+      return pathCode;
+    }
+    
+    // Check query parameter (e.g., ?code=Ht67h)
+    var params = new URLSearchParams(window.location.search);
+    var queryCode = params.get('code');
+    if (queryCode && queryCode.trim() !== '') {
+      return queryCode.trim();
+    }
+    
+    return null;
+  }
+
+  document.addEventListener('DOMContentLoaded', function() {
+    var code = getCodeFromUrl();
+    var codeForm = document.getElementById('codeForm');
+    var greeting = document.getElementById('greeting');
+    
+    if (code && codeForm && greeting) {
+      // If we have a code in URL, hide the form and submit it automatically
+      codeForm.style.display = 'none';
+      greeting.innerHTML = '<p>Memeriksa kode...</p>';
+      
+      // Set the code in the form and submit it
+      var codeInput = codeForm.querySelector('input[name="code"]');
+      if (codeInput) {
+        codeInput.value = code;
+      }
+      codeForm.submit();
+      return;
+    }
+    
+    // Initialize modal if we get here
+    initializeModal();
+    
+    // countdown logic
+    var cd = document.getElementById('countdown');
+    if (cd) {
+      var start = new Date(cd.dataset.start);
+      var end = new Date(cd.dataset.end);
+      
+      function updateCountdown() {
+        var now = new Date();
+        if (now > end) {
+          cd.innerText = "Pemilihan ditutup.";
+          return;
+        }
+        var diff = start - now;
+        if (diff <= 0) {
+          cd.innerText = "Pemilihan sudah dibuka. Silakan muat ulang halaman.";
+          location.reload();
+          return;
+        }
+        var days = Math.floor(diff / (1000*60*60*24));
+        var hrs = Math.floor((diff % (1000*60*60*24)) / (1000*60*60));
+        var min = Math.floor((diff % (1000*60*60)) / (1000*60));
+        var sec = Math.floor((diff % (1000*60)) / 1000);
+        cd.innerText = "Pemilihan di mulai dalam : " + days + "hari " + hrs + "jam " + min + "menit " + sec + "detik";
+      }
+      
+      updateCountdown();
+      setInterval(updateCountdown, 1000);
+    }
+
+    // If success param present in URL, show a message
+    var params = new URLSearchParams(location.search);
+    if (params.get('success') === '1') {
+      alert("Suara Anda telah tercatat. Terima kasih.");
+    }
+  });
 </script>
 </body>
 </html>

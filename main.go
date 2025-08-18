@@ -8,11 +8,13 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/joho/godotenv"
 )
 
 //go:embed templates/*
@@ -20,6 +22,14 @@ var templatesFS embed.FS
 
 //go:embed static/*
 var staticFS embed.FS
+
+// loadTemplates loads templates from the filesystem if in development mode, otherwise uses embedded FS
+func loadTemplates(useFS bool) (*template.Template, error) {
+    if useFS {
+        return template.ParseGlob("templates/*.html")
+    }
+    return template.ParseFS(templatesFS, "templates/*.html")
+}
 
 type App struct {
 	db        *pgxpool.Pool
@@ -31,25 +41,32 @@ type App struct {
 }
 
 type ViewData struct {
-	Code         string
-	Name         string
-	Message      string
-	BeforeStart  bool
-	AfterEnd     bool
-	StartISO     string
-	EndISO       string
-	AlreadyUsed  bool
-	Success      bool
-	Selected     string
-	Results      []VoteRow
+	Code        string
+	Name        string
+	Message     string
+	BeforeStart bool
+	AfterEnd    bool
+	StartISO    string
+	EndISO      string
+	AlreadyUsed bool
+	Success     bool
+	Selected    string
+	Results     []VoteRow
 }
 
 type VoteRow struct {
-	Code string
-	Name string
-	Used bool
+	Code   string
+	Name   string
+	Used   bool
 	UsedAt *time.Time
 	Choice string
+}
+
+func init() {
+	// load .env using godotenv
+	if err := godotenv.Load(); err != nil {
+		log.Println("No .env file found")
+	}
 }
 
 func main() {
@@ -73,7 +90,21 @@ func main() {
 		log.Fatalf("invalid VOTE_END: %v", err)
 	}
 
-	// pgxpool configuration via DATABASE_URL and optional envs
+	// pgxpool configuration via DATABASE_URL
+	// Check if we're in development mode (set DEV=1 in .env)
+	devMode := os.Getenv("DEV") == "1"
+
+	// Load templates
+	var tmpl *template.Template
+	tmpl, err = loadTemplates(devMode)
+	if err != nil {
+		log.Fatalf("failed to parse templates: %v", err)
+	}
+
+	if devMode {
+		log.Println("Running in development mode - template auto-reload enabled")
+	}
+
 	cfg, err := pgxpool.ParseConfig(databaseURL)
 	if err != nil {
 		log.Fatalf("unable to parse DATABASE_URL: %v", err)
@@ -98,7 +129,7 @@ func main() {
 	}
 	defer dbpool.Close()
 
-	tmpl := template.Must(template.ParseFS(templatesFS, "templates/*.html"))
+	tmpl = template.Must(template.ParseFS(templatesFS, "templates/*.html"))
 
 	app := &App{
 		db:        dbpool,
@@ -125,16 +156,29 @@ func main() {
 
 func (a *App) indexHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-
-	// Accept code in URL path: /Ht67h
+	
+	// Get code from URL path (e.g., /Ht67h)
 	path := strings.TrimPrefix(r.URL.Path, "/")
-	code := strings.TrimSpace(path)
-
-	// If path is root or contains query like /?code=..., handle query param
-	if code == "" {
-		code = r.URL.Query().Get("code")
+	path = strings.TrimSuffix(path, "/")
+	path = strings.TrimSpace(path)
+	
+	// Get code from query parameter (e.g., ?code=Ht67h)
+	queryCode := r.URL.Query().Get("code")
+	
+	// Use the code from the query parameter if available, otherwise use the path
+	code := queryCode
+	if code == "" && path != "" && path != "index.html" {
+		code = path
 	}
+	
+	// Clean up the code
 	code = strings.TrimSpace(code)
+	
+	// If we have a code in the path but not in the query, redirect to include it in the query
+	if path != "" && path != "index.html" && code != "" && queryCode == "" {
+		http.Redirect(w, r, "/?code="+url.QueryEscape(code), http.StatusFound)
+		return
+	}
 
 	now := time.Now()
 	data := ViewData{
