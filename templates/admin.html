@@ -137,47 +137,6 @@
     </main>
   </div>
 
-  <script>
-    function showTab(tabId, event) {
-      // Hide all tab contents
-      document.querySelectorAll('.tab-content').forEach(tab => {
-        tab.classList.remove('active');
-      });
-      
-      // Deactivate all tabs
-      document.querySelectorAll('.tab').forEach(tab => {
-        tab.classList.remove('active');
-      });
-      
-      // Show selected tab content
-      document.getElementById(tabId).classList.add('active');
-      
-      // Activate clicked tab if event is provided (not called from URL hash)
-      if (event && event.currentTarget) {
-        event.currentTarget.classList.add('active');
-      }
-    }
-
-    // Check for hash on page load
-    document.addEventListener('DOMContentLoaded', function() {
-      const hash = window.location.hash.substring(1);
-      if (hash) {
-        const tabToShow = document.getElementById(hash);
-        if (tabToShow) {
-          // Find and activate the corresponding tab
-          const tabButtons = document.querySelectorAll('.tab');
-          tabButtons.forEach(tab => {
-            if (tab.getAttribute('data-tab') === hash) {
-              tab.classList.add('active');
-              showTab(hash);
-            } else {
-              tab.classList.remove('active');
-            }
-          });
-        }
-      }
-    });
-  </script>
-</body>
-</html>
-{{end}}
+  </body>
+  </html>
+  {{end}}

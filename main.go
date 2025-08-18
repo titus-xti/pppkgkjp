@@ -89,8 +89,8 @@ type VoterInfo struct {
 	Code    string
 	Name    string
 	Used    bool
-	UsedAt  sql.NullTime
-	Choice  sql.NullString
+	UsedAt  string
+	Choice  string
 }
 
 type ViewData struct {
@@ -406,7 +406,7 @@ func (a *App) adminHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Get all voters with their details
 	rows, err := a.db.Query(ctx, `
-		SELECT code, name, used, used_at, vote_choice 
+		SELECT code, name, used, COALESCE(used_at::text, '') AS used_at_text, COALESCE(vote_choice::text, '') AS vote_choice_text
 		FROM voters 
 		ORDER BY used_at NULLS LAST, id`)
 	if err != nil {
