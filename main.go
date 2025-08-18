@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"embed"
 	"encoding/base64"
 	"fmt"
@@ -25,10 +26,10 @@ var staticFS embed.FS
 
 // loadTemplates loads templates from the filesystem if in development mode, otherwise uses embedded FS
 func loadTemplates(useFS bool) (*template.Template, error) {
-    if useFS {
-        return template.ParseGlob("templates/*.html")
-    }
-    return template.ParseFS(templatesFS, "templates/*.html")
+	if useFS {
+		return template.ParseGlob("templates/*.html")
+	}
+	return template.ParseFS(templatesFS, "templates/*.html")
 }
 
 type App struct {
@@ -49,6 +50,7 @@ type ViewData struct {
 	StartISO    string
 	EndISO      string
 	AlreadyUsed bool
+	HasVoted    bool
 	Success     bool
 	Selected    string
 	Results     []VoteRow
@@ -57,9 +59,9 @@ type ViewData struct {
 type VoteRow struct {
 	Code   string
 	Name   string
-	Used   bool
-	UsedAt *time.Time
-	Choice string
+	Used   sql.NullBool
+	UsedAt sql.NullTime
+	Choice sql.NullString
 }
 
 func init() {
@@ -156,24 +158,24 @@ func main() {
 
 func (a *App) indexHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	
+
 	// Get code from URL path (e.g., /Ht67h)
 	path := strings.TrimPrefix(r.URL.Path, "/")
 	path = strings.TrimSuffix(path, "/")
 	path = strings.TrimSpace(path)
-	
+
 	// Get code from query parameter (e.g., ?code=Ht67h)
 	queryCode := r.URL.Query().Get("code")
-	
+
 	// Use the code from the query parameter if available, otherwise use the path
 	code := queryCode
 	if code == "" && path != "" && path != "index.html" {
 		code = path
 	}
-	
+
 	// Clean up the code
 	code = strings.TrimSpace(code)
-	
+
 	// If we have a code in the path but not in the query, redirect to include it in the query
 	if path != "" && path != "index.html" && code != "" && queryCode == "" {
 		http.Redirect(w, r, "/?code="+url.QueryEscape(code), http.StatusFound)
@@ -206,7 +208,15 @@ func (a *App) indexHandler(w http.ResponseWriter, r *http.Request) {
 			data.Name = name
 			if used {
 				data.AlreadyUsed = true
-				data.Message = "Kode sudah digunakan."
+				// Check if this user has already voted
+				var choice string
+				err := a.db.QueryRow(ctx, "SELECT choice FROM votes WHERE code=$1", code).Scan(&choice)
+				data.HasVoted = (err == nil)
+				if data.HasVoted {
+					data.Message = "Terima kasih telah memilih."
+				} else {
+					data.Message = "Kode sudah digunakan."
+				}
 			} else {
 				// greeting
 				if !data.BeforeStart && !data.AfterEnd {
@@ -317,6 +327,7 @@ func (a *App) adminHandler(w http.ResponseWriter, r *http.Request) {
 	// fetch results
 	rows, err := a.db.Query(context.Background(), "SELECT code, name, used, used_at, vote_choice FROM voters ORDER BY used_at NULLS LAST, id")
 	if err != nil {
+		fmt.Println("db query error:", err)
 		http.Error(w, "db error", http.StatusInternalServerError)
 		return
 	}
@@ -327,6 +338,7 @@ func (a *App) adminHandler(w http.ResponseWriter, r *http.Request) {
 		var vr VoteRow
 		err := rows.Scan(&vr.Code, &vr.Name, &vr.Used, &vr.UsedAt, &vr.Choice)
 		if err != nil {
+			fmt.Println("db scan error:", err)
 			http.Error(w, "db error", http.StatusInternalServerError)
 			return
 		}

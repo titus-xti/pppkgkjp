@@ -19,7 +19,7 @@ body {
 }
 header { text-align:center; margin-bottom: 12px; }
 header h1 { color:#d33; margin: 6px 0; font-size:34px; letter-spacing:2px; }
-.question { background:#000; color:#fff; display:inline-block; padding:12px 18px; border-radius:4px; margin-top:8px; font-weight:700; }
+.question { display:inline-block; padding:12px 18px; border-radius:4px; margin-top:8px; font-weight:700; }
 
 /* Main layout */
 main { 
@@ -223,6 +223,105 @@ body.modal-open {
 form input[type="text"] { padding:8px; width:260px; border-radius:4px; border:1px solid #999; }
 
 .danger { color:#900; font-weight:700; }
+
+/* Used code notice */
+.used-code-notice {
+  background: #ff9800;
+  color: white;
+  padding: 20px;
+  border-radius: 6px;
+  font-size: 1.1em;
+  font-weight: 600;
+  text-align: center;
+  margin: 20px auto;
+  max-width: 500px;
+  box-shadow: 0 3px 6px rgba(0,0,0,0.16);
+}
+
+/* Thank you notice */
+.thank-you-notice {
+  background: #4CAF50;
+  color: white;
+  padding: 25px;
+  border-radius: 6px;
+  font-size: 1.2em;
+  font-weight: 600;
+  text-align: center;
+  margin: 20px auto;
+  max-width: 500px;
+  box-shadow: 0 3px 6px rgba(0,0,0,0.16);
+  animation: fadeIn 0.5s ease-in-out;
+}
+
+/* Question box styling */
+.question-box {
+  background: #fff;
+  border-radius: 8px;
+  padding: 20px;
+  margin: 15px 0;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  border: 1px solid #e0e0e0;
+}
+
+.question {
+  color: #333;
+  font-size: 1.1em;
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* Code entry form */
+.code-entry-container {
+  max-width: 400px;
+  margin: 2rem auto;
+  padding: 2rem;
+  background: #f8f9fa;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.code-entry-container h3 {
+  margin-top: 0;
+  color: #2c3e50;
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+
+.code-form .form-group {
+  display: flex;
+  gap: 10px;
+  margin-top: 1rem;
+}
+
+.code-input {
+  flex: 1;
+  padding: 12px 15px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 1rem;
+  transition: border-color 0.3s;
+}
+
+.code-input:focus {
+  outline: none;
+  border-color: #4CAF50;
+  box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.2);
+}
+
+.submit-button {
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 0 20px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.submit-button:hover {
+  background-color: #45a049;
+}
 
 footer { margin-top:12px; text-align:center; font-size:13px; opacity:0.8; }
 

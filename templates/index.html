@@ -14,9 +14,6 @@
       {{if .Name}}
         <div class="greeting">
           <h2>Selamat Datang, {{.Name}}!</h2>
-          {{if .AlreadyUsed}}
-            <p class="danger">Kode sudah digunakan.</p>
-          {{end}}
         </div>
       {{end}}
     </header>
@@ -41,31 +38,48 @@
           {{else if .AfterEnd}}
             <div class="notice">Pemilihan ditutup</div>
           {{else}}
-            <div class="question">
-              <strong>APAKAH ANDA SETUJU ATAU TIDAK SETUJU<br>SDR. FAISHA SUDARLIN, M.TH<br>SEBAGAI PENDETA KEDUA GKJ PAMULANG?</strong>
-            </div>
-            {{if not .Name}}
-              <div id="code-entry">
-                <form id="codeForm" method="get" action="/">
-                  <label>Masukkan kode unik:</label>
-                  <input type="text" name="code" placeholder="Kode unik" required>
-                  <button type="submit">Masuk</button>
+            {{if .Name}}
+              {{if .AlreadyUsed}}
+                {{if .HasVoted}}
+                <div class="thank-you-notice">
+                  Terimakasih Atas Suara Anda
+                </div>
+                {{else}}
+                <div class="used-code-notice">
+                  Kode Sudah di gunakan
+                </div>
+                {{end}}
+              {{else}}
+                <div class="question-box">
+                  <div class="question">
+                    <strong>APAKAH ANDA SETUJU ATAU TIDAK SETUJU<br>SDR. FAISHA SUDARLIN, M.TH<br>SEBAGAI PENDETA KEDUA GKJ PAMULANG?</strong>
+                  </div>
+                </div>
+              {{end}}
+            {{else}}
+              <div id="code-entry" class="code-entry-container">
+                <h3>Masukkan Kode Unik</h3>
+                <form id="codeForm" method="get" action="/" class="code-form">
+                  <div class="form-group">
+                    <input type="text" name="code" placeholder="Masukkan kode unik Anda" required class="code-input">
+                    <button type="submit" class="submit-button">Masuk</button>
+                  </div>
                 </form>
               </div>
             {{end}}
           {{end}}
         </div>
 
-        {{if not .BeforeStart}}
+        {{if and (not .BeforeStart) .Name (not .AlreadyUsed)}}
         <div class="choices" style="display: flex; justify-content: space-between; margin-top: 20px;">
           <div style="width: 100%;">
             <div style="display: flex; justify-content: space-around;">
               <div class="choiceBox big" data-choice="setuju" onclick="submitVote('setuju')" style="margin-right: 10px; cursor: pointer;">
-                <input type="radio" id="setuju" name="choice" value="setuju" {{if .AlreadyUsed}}disabled{{end}} style="display: none;">
+                <input type="radio" id="setuju" name="choice" value="setuju" style="display: none;">
                 <label for="setuju" class="choiceLabel">SETUJU</label>
               </div>
               <div class="choiceBox big" data-choice="tidak_setuju" onclick="submitVote('tidak_setuju')" style="margin-left: 10px; cursor: pointer;">
-                <input type="radio" id="tdksetuju" name="choice" value="tidak_setuju" {{if .AlreadyUsed}}disabled{{end}} style="display: none;">
+                <input type="radio" id="tdksetuju" name="choice" value="tidak_setuju" style="display: none;">
                 <label for="tdksetuju" class="choiceLabel">TIDAK<br>SETUJU</label>
               </div>
             </div>
