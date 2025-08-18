@@ -7,7 +7,7 @@ services:
     environment:
       POSTGRES_DB: vote
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: Gkjp2025$#
+      POSTGRES_PASSWORD: Gkjp2025
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -27,11 +27,11 @@ services:
       db:
         condition: service_healthy
     environment:
-      - DATABASE_URL=postgres://postgres:Gkjp2025$#@db:5432/vote?sslmode=disable
+      - DATABASE_URL=postgres://postgres:Gkjp2025@db:5432/vote?sslmode=disable
       - VOTE_START=2025-08-18T08:00:00+07:00
       - VOTE_END=2025-08-18T23:00:00+07:00
       - ADMIN_USER=admin
-      - ADMIN_PASS=Gkjp2025$#
+      - ADMIN_PASS=Gkjp2025
       - PORT=8080
     ports:
       - "8080:8080"

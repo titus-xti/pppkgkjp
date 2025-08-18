@@ -108,91 +108,32 @@
         </div>
       </div>
 
-      <!-- Tabs -->
-      <div class="tabs">
-        <div class="tab active" data-tab="all" onclick="showTab('all', event)">Semua Peserta</div>
-        <div class="tab" data-tab="voted" onclick="showTab('voted', event)">Sudah Memilih</div>
-        <div class="tab" data-tab="not-voted" onclick="showTab('not-voted', event)">Belum Memilih</div>
-      </div>
-
-      <!-- All Participants -->
-      <div id="all" class="tab-content active">
-        <h2>Daftar Semua Peserta</h2>
-        <table class="results">
-          <thead>
-            <tr>
-              <th>No</th>
-              <th>Kode</th>
-              <th>Nama</th>
-              <th>Status</th>
-              <th>Waktu Memilih</th>
-              <th>Pilihan</th>
-            </tr>
-          </thead>
-          <tbody>
-            {{range $i, $voter := .AllVoters}}
-            <tr>
-              <td>{{$i}}</td>
-              <td>{{$voter.Code}}</td>
-              <td>{{$voter.Name}}</td>
-              <td>{{if $voter.Used}}Sudah Memilih{{else}}Belum Memilih{{end}}</td>
-              <td>{{if $voter.UsedAt}}{{$voter.UsedAt.Format "02 Jan 2006 15:04:05"}}{{else}}-{{end}}</td>
-              <td>{{if $voter.Choice}}{{$voter.Choice}}{{else}}-{{end}}</td>
-            </tr>
-            {{end}}
-          </tbody>
-        </table>
-      </div>
-
-      <!-- Voted Participants -->
-      <div id="voted" class="tab-content">
-        <h2>Peserta yang Sudah Memilih</h2>
-        <table class="results">
-          <thead>
-            <tr>
-              <th>No</th>
-              <th>Kode</th>
-              <th>Nama</th>
-              <th>Waktu Memilih</th>
-              <th>Pilihan</th>
-            </tr>
-          </thead>
-          <tbody>
-            {{range $i, $voter := .VotedVoters}}
-            <tr>
-              <td>{{$i}}</td>
-              <td>{{$voter.Code}}</td>
-              <td>{{$voter.Name}}</td>
-              <td>{{$voter.UsedAt.Format "02 Jan 2006 15:04:05"}}</td>
-              <td>{{$voter.Choice}}</td>
-            </tr>
-            {{end}}
-          </tbody>
-        </table>
-      </div>
-
-      <!-- Not Voted Participants -->
-      <div id="not-voted" class="tab-content">
-        <h2>Peserta yang Belum Memilih</h2>
-        <table class="results">
-          <thead>
-            <tr>
-              <th>No</th>
-              <th>Kode</th>
-              <th>Nama</th>
-            </tr>
-          </thead>
-          <tbody>
-            {{range $i, $voter := .NotVotedVoters}}
-            <tr>
-              <td>{{$i}}</td>
-              <td>{{$voter.Code}}</td>
-              <td>{{$voter.Name}}</td>
-            </tr>
-            {{end}}
-          </tbody>
-        </table>
-      </div>
+      <!-- Daftar Semua Peserta (tanpa tab) -->
+      <h2>Daftar Semua Peserta</h2>
+      <table class="results">
+        <thead>
+          <tr>
+            <th>No</th>
+            <th>Kode</th>
+            <th>Nama</th>
+            <th>Status</th>
+            <th>Waktu Memilih</th>
+            <th>Pilihan</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{range $i, $voter := .AllVoters}}
+          <tr>
+            <td>{{$i}}</td>
+            <td>{{$voter.Code}}</td>
+            <td>{{$voter.Name}}</td>
+            <td>{{if $voter.Used}}Sudah Memilih{{else}}Belum Memilih{{end}}</td>
+            <td>{{$voter.UsedAt}}</td>
+            <td>{{$voter.Choice}}</td>
+          </tr>
+          {{end}}
+        </tbody>
+      </table>
     </main>
   </div>
 
