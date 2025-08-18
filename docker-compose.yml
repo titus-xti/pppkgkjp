@@ -43,5 +43,16 @@ services:
       retries: 3
       start_period: 10s
 
+  nginx:
+    image: nginx:alpine
+    container_name: pemilihan-nginx
+    depends_on:
+      - app
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    ports:
+      - "80:80"
+    restart: unless-stopped
+
 volumes:
   postgres_data:
