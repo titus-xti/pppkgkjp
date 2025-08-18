@@ -25,7 +25,7 @@
         </div>
         <div class="meta">
           <div class="calon">Calon Pendeta GKJ Pamulang</div>
-          <div class="name">Faisha Sudarlin, M.Th</div>
+          <div class="name">Bp. Faisha Sudarlin, M.Th</div>
         </div>
       </div>
 
@@ -46,25 +46,27 @@
                 </div>
                 {{else}}
                 <div class="used-code-notice">
-                  Kode Sudah di gunakan
+                  Suara Anda sudah masuk,<br/>Terimakasih atas Partisipasi Anda<br>
+                  <a href="/">Kembali</a>
                 </div>
                 {{end}}
               {{else}}
                 <div class="question-box">
                   <div class="question">
-                    <strong>APAKAH ANDA SETUJU ATAU TIDAK SETUJU<br>SDR. FAISHA SUDARLIN, M.TH<br>SEBAGAI PENDETA KEDUA GKJ PAMULANG?</strong>
+                    <strong>Apakah anda SETUJU atau TIDAK SETUJU<br>Bp. Faisha Sudarlin, M.Th<br>Sebagai Pendeta Kedua GKJ Pamulang?</strong>
                   </div>
                 </div>
               {{end}}
             {{else}}
               <div id="code-entry" class="code-entry-container">
-                <h3>Masukkan Kode Unik</h3>
+                <h3>Masukan Kode Unik</h3>
                 <form id="codeForm" method="get" action="/" class="code-form">
                   <div class="form-group">
-                    <input type="text" name="code" placeholder="Masukkan kode unik Anda" required class="code-input">
+                    <input type="text" name="code" placeholder="Masukan kode unik Anda" required class="code-input">
                     <button type="submit" class="submit-button">Masuk</button>
                   </div>
                 </form>
+                <p style="color: red; margin-top: 10px;text-align: center; font-weight: bold;">{{ .Message }}</p>
               </div>
             {{end}}
           {{end}}
@@ -102,7 +104,7 @@
   <div id="confirmModal" class="modal" tabindex="-1" role="dialog" aria-hidden="true">
     <div class="modal-content">
       <h3>Konfirmasi Suara</h3>
-      <p>Anda yakin memilih <span id="modalChoice"></span>?</p>
+      <p>Suara yang sudah masuk tidak dapat di ubah, Anda yakin memilih <span id="modalChoice"></span>?</p>
       <div class="modal-buttons">
         <button id="confirmNo" class="btn-cancel">Batal</button>
         <button id="confirmYes" class="btn-confirm">Ya, Saya Yakin</button>
@@ -305,7 +307,7 @@
     var code = urlParams.get('code');
     
     if (!code) {
-      alert("Silakan masukkan kode terlebih dahulu.");
+      alert("Silakan masukan kode terlebih dahulu.");
       return;
     }
     
@@ -384,7 +386,7 @@
     
     if (!code) {
       console.log('No code found in URL');
-      alert("Silakan masukkan kode terlebih dahulu.");
+      alert("Silakan masukan kode terlebih dahulu.");
       return;
     }
     

@@ -21,5 +21,5 @@ psql $DATABASE_URL -f migrate.sql
 go run main.go
 
 akses:
-- Voting: http://localhost:8080/Ht67h  (atau buka http://localhost:8080 dan masukkan kode)
+- Voting: http://localhost:8080/Ht67h  (atau buka http://localhost:8080 dan masukan kode)
 - Admin results (basic auth): http://localhost:8080/admin

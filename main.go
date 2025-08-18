@@ -26,10 +26,43 @@ var staticFS embed.FS
 
 // loadTemplates loads templates from the filesystem if in development mode, otherwise uses embedded FS
 func loadTemplates(useFS bool) (*template.Template, error) {
+	// Create a new template with the add function
+	tmpl := template.New("").Funcs(template.FuncMap{
+		"add": func(a, b int) int { return a + b },
+	})
+
+	var err error
 	if useFS {
-		return template.ParseGlob("templates/*.html")
+		tmpl, err = tmpl.ParseGlob("templates/*.html")
+	} else {
+		tmpl, err = tmpl.ParseFS(templatesFS, "templates/*.html")
 	}
-	return template.ParseFS(templatesFS, "templates/*.html")
+
+	if err != nil {
+		return nil, fmt.Errorf("error parsing templates: %v", err)
+	}
+
+	return tmpl, nil
+}
+
+// parseTemplates parses templates with the given functions
+func parseTemplates(useFS bool) (*template.Template, error) {
+	tmpl := template.New("").Funcs(template.FuncMap{
+		"add": func(a, b int) int { return a + b },
+	})
+
+	var err error
+	if useFS {
+		tmpl, err = tmpl.ParseGlob("templates/*.html")
+	} else {
+		tmpl, err = tmpl.ParseFS(templatesFS, "templates/*.html")
+	}
+
+	if err != nil {
+		return nil, fmt.Errorf("error parsing templates: %v", err)
+	}
+
+	return tmpl, nil
 }
 
 type App struct {
@@ -39,6 +72,25 @@ type App struct {
 	voteEnd   time.Time
 	adminUser string
 	adminPass string
+}
+
+type AdminData struct {
+	TotalVoters      int
+	VotedCount       int
+	NotVotedCount    int
+	SetujuCount      int
+	TidakSetujuCount int
+	AllVoters        []VoterInfo
+	VotedVoters      []VoterInfo
+	NotVotedVoters   []VoterInfo
+}
+
+type VoterInfo struct {
+	Code    string
+	Name    string
+	Used    bool
+	UsedAt  sql.NullTime
+	Choice  sql.NullString
 }
 
 type ViewData struct {
@@ -97,10 +149,9 @@ func main() {
 	devMode := os.Getenv("DEV") == "1"
 
 	// Load templates
-	var tmpl *template.Template
-	tmpl, err = loadTemplates(devMode)
+	tmpl, err := parseTemplates(devMode)
 	if err != nil {
-		log.Fatalf("failed to parse templates: %v", err)
+		log.Fatalf("Failed to load templates: %v", err)
 	}
 
 	if devMode {
@@ -203,7 +254,7 @@ func (a *App) indexHandler(w http.ResponseWriter, r *http.Request) {
 		err := a.db.QueryRow(ctx, "SELECT name, used FROM voters WHERE code=$1", code).Scan(&name, &used)
 		if err != nil {
 			// not found
-			data.Message = "Kode tidak ditemukan. Masukkan kode unik yang valid."
+			data.Message = "Kode tidak ditemukan!"
 		} else {
 			data.Name = name
 			if used {
@@ -324,28 +375,95 @@ func (a *App) adminHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// fetch results
-	rows, err := a.db.Query(context.Background(), "SELECT code, name, used, used_at, vote_choice FROM voters ORDER BY used_at NULLS LAST, id")
+	ctx := context.Background()
+	
+	// Get total voters count
+	var totalVoters int
+	err := a.db.QueryRow(ctx, "SELECT COUNT(*) FROM voters").Scan(&totalVoters)
 	if err != nil {
-		fmt.Println("db query error:", err)
-		http.Error(w, "db error", http.StatusInternalServerError)
+		fmt.Println("error getting total voters:", err)
+		http.Error(w, "database error", http.StatusInternalServerError)
+		return
+	}
+
+	// Get voted count and choice statistics
+	var votedCount, setujuCount, tidakSetujuCount int
+	err = a.db.QueryRow(ctx, `
+		SELECT 
+			COUNT(*) FILTER (WHERE used = true) as voted_count,
+			COUNT(*) FILTER (WHERE vote_choice = 'setuju') as setuju_count,
+			COUNT(*) FILTER (WHERE vote_choice = 'tidak setuju') as tidak_setuju_count
+		FROM voters`).
+		Scan(&votedCount, &setujuCount, &tidakSetujuCount)
+
+	if err != nil {
+		fmt.Println("error getting voting stats:", err)
+		http.Error(w, "database error", http.StatusInternalServerError)
+		return
+	}
+
+	notVotedCount := totalVoters - votedCount
+
+	// Get all voters with their details
+	rows, err := a.db.Query(ctx, `
+		SELECT code, name, used, used_at, vote_choice 
+		FROM voters 
+		ORDER BY used_at NULLS LAST, id`)
+	if err != nil {
+		fmt.Println("error getting voters:", err)
+		http.Error(w, "database error", http.StatusInternalServerError)
 		return
 	}
 	defer rows.Close()
 
-	var results []VoteRow
+	var allVoters, votedVoters, notVotedVoters []VoterInfo
+
 	for rows.Next() {
-		var vr VoteRow
-		err := rows.Scan(&vr.Code, &vr.Name, &vr.Used, &vr.UsedAt, &vr.Choice)
+		var v VoterInfo
+		err := rows.Scan(&v.Code, &v.Name, &v.Used, &v.UsedAt, &v.Choice)
 		if err != nil {
-			fmt.Println("db scan error:", err)
-			http.Error(w, "db error", http.StatusInternalServerError)
-			return
+			fmt.Println("error scanning voter:", err)
+			continue
 		}
-		results = append(results, vr)
+
+		allVoters = append(allVoters, v)
+		if v.Used {
+			votedVoters = append(votedVoters, v)
+		} else {
+			notVotedVoters = append(notVotedVoters, v)
+		}
 	}
-	data := ViewData{Results: results}
+
+	if err = rows.Err(); err != nil {
+		fmt.Println("error iterating voters:", err)
+		http.Error(w, "database error", http.StatusInternalServerError)
+		return
+	}
+
+	// Prepare data for template
+	data := struct {
+		TotalVoters      int
+		VotedCount       int
+		NotVotedCount    int
+		SetujuCount      int
+		TidakSetujuCount int
+		AllVoters        []VoterInfo
+		VotedVoters      []VoterInfo
+		NotVotedVoters   []VoterInfo
+	}{
+		TotalVoters:      totalVoters,
+		VotedCount:       votedCount,
+		NotVotedCount:    notVotedCount,
+		SetujuCount:      setujuCount,
+		TidakSetujuCount: tidakSetujuCount,
+		AllVoters:        allVoters,
+		VotedVoters:      votedVoters,
+		NotVotedVoters:   notVotedVoters,
+	}
+
+	// Execute the template
 	if err := a.tmpl.ExecuteTemplate(w, "admin.html", data); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		fmt.Println("error executing template:", err)
+		http.Error(w, "template error", http.StatusInternalServerError)
 	}
 }
