@@ -392,7 +392,7 @@ func (a *App) adminHandler(w http.ResponseWriter, r *http.Request) {
 		SELECT 
 			COUNT(*) FILTER (WHERE used = true) as voted_count,
 			COUNT(*) FILTER (WHERE vote_choice = 'setuju') as setuju_count,
-			COUNT(*) FILTER (WHERE vote_choice = 'tidak setuju') as tidak_setuju_count
+			COUNT(*) FILTER (WHERE vote_choice = 'tidak_setuju') as tidak_setuju_count
 		FROM voters`).
 		Scan(&votedCount, &setujuCount, &tidakSetujuCount)
 

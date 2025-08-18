@@ -76,6 +76,54 @@
   .results tr:hover {
     background-color: #f1f1f1;
   }
+  .pagination-container {
+    display: block;
+    width: 100%;
+    clear: both;
+    margin-top: 10px;
+  }
+  .pagination-bar {
+    display: flex;
+    justify-content: flex-start;
+    gap: 6px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .results-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex: 1;
+    min-width: 320px;
+  }
+  /* Admin page vertical layout */
+  .admin-main {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    padding: 12px;
+  }
+  .centered-section {
+    width: 100%;
+    max-width: 900px;
+  }
+  /* Responsive helpers */
+  .table-scroll { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  @media (max-width: 768px) {
+    .stat-box { min-width: 150px; padding: 14px; }
+    .stat-value { font-size: 1.6em; }
+    .results th, .results td { padding: 6px 8px; font-size: 13px; }
+    .centered-section { padding: 0 8px; }
+  }
+  @media (max-width: 480px) {
+    .stat-box { min-width: 130px; padding: 12px; }
+    .stat-value { font-size: 1.4em; }
+    .stat-label { font-size: 0.85em; }
+    .results { min-width: 640px; } /* force horizontal scroll on very small screens */
+    .pagination-bar { justify-content: center; }
+    .pagination-bar button { padding: 8px 10px !important; font-size: 14px !important; }
+  }
 </style>
 </head>
 <body>
@@ -83,8 +131,9 @@
     <header>
       <h1>Admin - Hasil Pemilihan</h1>
     </header>
-    <main>
-      <!-- Stats Recap -->
+    <main class="admin-main">
+      <!-- 1) Recap total peserta -->
+      <div class="centered-section">
       <div class="stats">
         <div class="stat-box">
           <div class="stat-value">{{.TotalVoters}}</div>
@@ -107,9 +156,13 @@
           <div class="stat-label">Tidak Setuju</div>
         </div>
       </div>
+      </div>
 
-      <!-- Daftar Semua Peserta (tanpa tab) -->
-      <h2>Daftar Semua Peserta</h2>
+      <!-- 2) Table details -->
+      <div class="centered-section">
+      <div class="results-wrapper">
+      <h2 style="text-align:center">Daftar Semua Peserta</h2>
+      <div class="table-scroll">
       <table class="results">
         <thead>
           <tr>
@@ -121,7 +174,7 @@
             <th>Pilihan</th>
           </tr>
         </thead>
-        <tbody>
+        <tbody id="voters-body">
           {{range $i, $voter := .AllVoters}}
           <tr>
             <td>{{$i}}</td>
@@ -134,9 +187,133 @@
           {{end}}
         </tbody>
       </table>
+      </div>
+      </div>
+      </div>
+
+      <!-- 3) Paging -->
+      <div class="centered-section">
+        <div class="pagination-container">
+          <div id="pagination" class="pagination-bar" style="justify-content:center"></div>
+        </div>
+      </div>
+      <script>
+        (function() {
+          let rowsPerPage = 10;
+          const tbody = document.getElementById('voters-body');
+          if (!tbody) return;
+          const rows = Array.from(tbody.querySelectorAll('tr'));
+          const totalRows = rows.length;
+          let totalPages = 1;
+          let currentPage = 1;
+
+          const pagEl = document.getElementById('pagination');
+          if (!pagEl) return;
+
+          function setTotalPages() {
+            totalPages = Math.max(1, Math.ceil(totalRows / rowsPerPage));
+          }
+
+          function renderPage(page) {
+            currentPage = Math.min(Math.max(1, page), totalPages);
+            const start = (currentPage - 1) * rowsPerPage;
+            const end = start + rowsPerPage;
+            rows.forEach((tr, idx) => {
+              tr.style.display = (idx >= start && idx < end) ? '' : 'none';
+            });
+            renderControls();
+          }
+
+          function makeButton(label, disabled, onClick, isActive=false) {
+            const btn = document.createElement('button');
+            btn.textContent = label;
+            btn.disabled = !!disabled;
+            btn.style.padding = '6px 10px';
+            btn.style.border = '1px solid #ddd';
+            btn.style.background = isActive ? '#2c3e50' : '#fff';
+            btn.style.color = isActive ? '#fff' : '#2c3e50';
+            btn.style.borderRadius = '4px';
+            btn.style.cursor = disabled ? 'not-allowed' : 'pointer';
+            if (!disabled && onClick) btn.addEventListener('click', onClick);
+            return btn;
+          }
+
+          function makePageSizeControl() {
+            const wrapper = document.createElement('label');
+            wrapper.style.display = 'inline-flex';
+            wrapper.style.alignItems = 'center';
+            wrapper.style.gap = '6px';
+            wrapper.style.marginRight = '8px';
+            wrapper.textContent = 'Baris per halaman:';
+            const select = document.createElement('select');
+            [10,25,50,100].forEach(n => {
+              const opt = document.createElement('option');
+              opt.value = String(n);
+              opt.textContent = String(n);
+              if (n === rowsPerPage) opt.selected = true;
+              select.appendChild(opt);
+            });
+            select.addEventListener('change', () => {
+              rowsPerPage = parseInt(select.value, 10) || 10;
+              setTotalPages();
+              renderPage(1);
+            });
+            wrapper.appendChild(select);
+            return wrapper;
+          }
+
+          function renderControls() {
+            pagEl.innerHTML = '';
+            // Page size selector
+            pagEl.appendChild(makePageSizeControl());
+            // Info
+            const info = document.createElement('span');
+            info.textContent = `Menampilkan ${(totalRows===0)?0:((currentPage-1)*rowsPerPage+1)}-${Math.min(currentPage*rowsPerPage, totalRows)} dari ${totalRows}`;
+            info.style.marginRight = '8px';
+            pagEl.appendChild(info);
+
+            // Prev
+            pagEl.appendChild(makeButton('Prev', currentPage === 1, () => renderPage(currentPage - 1)));
+
+            // Page numbers (compact)
+            const maxButtons = 7; // includes first/last and ellipsis handling
+            let pages = [];
+            if (totalPages <= maxButtons) {
+              pages = Array.from({length: totalPages}, (_, i) => i + 1);
+            } else {
+              const left = Math.max(2, currentPage - 2);
+              const right = Math.min(totalPages - 1, currentPage + 2);
+              pages = [1];
+              if (left > 2) pages.push('...');
+              for (let p = left; p <= right; p++) pages.push(p);
+              if (right < totalPages - 1) pages.push('...');
+              pages.push(totalPages);
+            }
+            pages.forEach(p => {
+              if (p === '...') {
+                const span = document.createElement('span');
+                span.textContent = '…';
+                span.style.padding = '0 6px';
+                pagEl.appendChild(span);
+              } else {
+                pagEl.appendChild(
+                  makeButton(String(p), false, () => renderPage(p), p === currentPage)
+                );
+              }
+            });
+
+            // Next
+            pagEl.appendChild(makeButton('Next', currentPage === totalPages, () => renderPage(currentPage + 1)));
+          }
+
+          // Initial render
+          setTotalPages();
+          renderPage(1);
+        })();
+      </script>
     </main>
   </div>
 
   </body>
   </html>
-  {{end}}
+{{end}}
