@@ -1,0 +1,34 @@
+{{define "admin.html"}}
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Admin - Hasil Pemilihan</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Admin - Hasil Pemilihan</h1>
+    </header>
+    <main>
+      <table class="results">
+        <thead><tr><th>Kode</th><th>Nama</th><th>Used</th><th>Used At</th><th>Choice</th></tr></thead>
+        <tbody>
+          {{range .Results}}
+          <tr>
+            <td>{{.Code}}</td>
+            <td>{{.Name}}</td>
+            <td>{{.Used}}</td>
+            <td>{{if .UsedAt}}{{.UsedAt}}{{end}}</td>
+            <td>{{.Choice}}</td>
+          </tr>
+          {{end}}
+        </tbody>
+      </table>
+    </main>
+  </div>
+</body>
+</html>
+{{end}}

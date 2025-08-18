@@ -1,0 +1,173 @@
+{{define "index.html"}}
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Pemilihan Pendeta GKJ Pamulang</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>SURAT SUARA</h1>
+      <div class="question">
+        <strong>APAKAH ANDA SETUJU ATAU TIDAK SETUJU<br>SDR. FAISHA SUDARLIN, M.TH<br>SEBAGAI PENDETA KEDUA GKJ PAMULANG?</strong>
+      </div>
+    </header>
+
+    <main>
+      <div class="left">
+        <div class="photo">
+          <img src="https://via.placeholder.com/220x260.png?text=Foto+Calon" alt="Foto calon">
+        </div>
+        <div class="meta">
+          <div class="calon">Calon Pendeta GKJ Pamulang</div>
+          <div class="name">Faisha Sudarlin, M.Th</div>
+        </div>
+      </div>
+
+      <div class="right">
+        <div class="topbox">
+          {{if .BeforeStart}}
+            <div class="notice">Pemilihan belum dimulai</div>
+            <div id="countdown" data-start="{{.StartISO}}" data-end="{{.EndISO}}"></div>
+          {{else if .AfterEnd}}
+            <div class="notice">Pemilihan ditutup</div>
+          {{else}}
+            <div id="greeting">
+              {{if .Name}}
+                <h2>Selamat, {{.Name}}!</h2>
+                {{if .AlreadyUsed}}
+                  <p class="danger">Kode sudah digunakan.</p>
+                {{end}}
+              {{else}}
+                <form id="codeForm" method="get" action="/">
+                  <label>Masukkan kode unik:</label>
+                  <input type="text" name="code" placeholder="Kode unik" required>
+                  <button type="submit">Masuk</button>
+                </form>
+              {{end}}
+            </div>
+          {{end}}
+        </div>
+
+        <div class="choices">
+          <form id="voteForm" method="post" action="/vote">
+            <input type="hidden" name="code" value="{{.Code}}">
+            <div class="choiceBox big" data-choice="setuju" onclick="selectChoice('setuju')">
+              <input type="radio" id="setuju" name="choice" value="setuju" {{if .AlreadyUsed}}disabled{{end}}>
+              <label for="setuju" class="choiceLabel">SETUJU</label>
+            </div>
+            <div class="choiceBox big" data-choice="tidak_setuju" onclick="selectChoice('tidak_setuju')">
+              <input type="radio" id="tdksetuju" name="choice" value="tidak_setuju" {{if .AlreadyUsed}}disabled{{end}}>
+              <label for="tdksetuju" class="choiceLabel">TIDAK<br>SETUJU</label>
+            </div>
+            <div class="submitRow">
+              {{if .Code}}
+                <button type="button" id="submitBtn" {{if .AlreadyUsed}}disabled{{end}}>Kirim Suara</button>
+              {{else}}
+                <p>Masukkan kode dulu untuk memilih.</p>
+              {{end}}
+            </div>
+          </form>
+        </div>
+
+      </div>
+    </main>
+
+    <footer>
+      <p>Powered by GKJ Pamulang — Sistem Pemilihan</p>
+    </footer>
+  </div>
+
+  <!-- Confirmation modal -->
+  <div id="confirmModal" class="modal" aria-hidden="true">
+    <div class="modal-content">
+      <h3>Konfirmasi Suara</h3>
+      <p id="selectedText">Anda memilih: <strong></strong></p>
+      <div class="modal-actions">
+        <button id="confirmYes">Ya, kirim</button>
+        <button id="confirmNo">Batal</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+(function(){
+  // countdown logic
+  var cd = document.getElementById('countdown');
+  if (cd) {
+    var start = new Date(cd.dataset.start);
+    var end = new Date(cd.dataset.end);
+    function update() {
+      var now = new Date();
+      if (now > end) {
+        cd.innerText = "Pemilihan ditutup.";
+        return;
+      }
+      var diff = start - now;
+      if (diff <= 0) {
+        cd.innerText = "Pemilihan sudah dibuka. Silakan muat ulang halaman.";
+        return;
+      }
+      var days = Math.floor(diff / (1000*60*60*24));
+      var hrs = Math.floor((diff % (1000*60*60*24)) / (1000*60*60));
+      var min = Math.floor((diff % (1000*60*60)) / (1000*60));
+      var sec = Math.floor((diff % (1000*60)) / 1000);
+      cd.innerText = "Waktu buka: " + days + "d " + hrs + "j " + min + "m " + sec + "s";
+    }
+    update();
+    setInterval(update, 1000);
+  }
+
+  // modal logic
+  var selected = null;
+  window.selectChoice = function(choice) {
+    selected = choice;
+    // set radio checked
+    if (choice === 'setuju') {
+      document.getElementById('setuju').checked = true;
+    } else {
+      document.getElementById('tdksetuju').checked = true;
+    }
+    // highlight
+    document.querySelectorAll('.choiceBox').forEach(function(el){
+      el.classList.toggle('selected', el.dataset.choice === choice);
+    });
+  }
+
+  var submitBtn = document.getElementById('submitBtn');
+  var modal = document.getElementById('confirmModal');
+  var selectedText = document.querySelector('#selectedText strong');
+  if (submitBtn) {
+    submitBtn.addEventListener('click', function(){
+      if (!selected) {
+        alert("Pilih terlebih dahulu.");
+        return;
+      }
+      selectedText.innerText = selected === 'setuju' ? 'SETUJU' : 'TIDAK SETUJU';
+      modal.setAttribute('aria-hidden', 'false');
+      modal.classList.add('open');
+    });
+  }
+  document.getElementById('confirmNo').addEventListener('click', function(){
+    modal.setAttribute('aria-hidden', 'true');
+    modal.classList.remove('open');
+  });
+  document.getElementById('confirmYes').addEventListener('click', function(){
+    // submit the form
+    document.querySelector('input[name="choice"][value="'+selected+'"]').checked = true;
+    document.getElementById('voteForm').submit();
+  });
+
+  // If success param present in URL, show a message
+  var params = new URLSearchParams(location.search);
+  if (params.get('success') === '1') {
+    alert("Suara Anda telah tercatat. Terima kasih.");
+  }
+})();
+</script>
+</body>
+</html>
+{{end}}
