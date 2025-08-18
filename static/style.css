@@ -85,7 +85,8 @@ main {
   align-items: center;
   justify-content: center;
   text-align: center;
-  word-break: break-word;
+  word-break: normal;
+  overflow-wrap: normal;
 }
 
 /* Responsive adjustments */
@@ -152,8 +153,28 @@ main {
     width: 100%;
     height: 44px;
   }
+
+  /* Slightly tighter upper bound for button text on very small screens */
+  .choiceLabel {
+    font-size: clamp(16px, 7.5vw, 30px);
+  }
+
+  /* Force all text inputs to be full width on very small devices */
+  form input[type="text"] {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+  /* Ensure the code entry section and form occupy full width */
+  .code-entry-container { width: 100%; box-sizing: border-box; padding: 16px; }
+  .code-form { width: 100%; }
+  .code-form .form-group { width: 100%; }
 }
-.choiceLabel { font-size:36px; font-weight:800; text-align:center; }
+.choiceLabel {
+  font-size: clamp(20px, 6.5vw, 36px);
+  font-weight: 800;
+  text-align: center;
+  white-space: nowrap; /* keep single-word labels like SETUJU on one line */
+}
 .choiceBox input[type="radio"] { display:none; }
 
 .choiceBox:hover { transform: translateY(-4px); cursor:pointer; }
@@ -235,7 +256,7 @@ body.modal-open {
   transform: translateY(-2px);
 }
 
-form input[type="text"] { padding:8px; width:260px; border-radius:4px; border:1px solid #999; }
+form input[type="text"] { padding:8px; width:100%; max-width:100%; border-radius:4px; border:1px solid #999; }
 
 .danger { color:#900; font-weight:700; }
 
@@ -307,6 +328,7 @@ form input[type="text"] { padding:8px; width:260px; border-radius:4px; border:1p
   gap: 10px;
   margin-top: 1rem;
   flex-wrap: wrap;
+  align-items: stretch;
 }
 
 .code-input {
@@ -316,6 +338,7 @@ form input[type="text"] { padding:8px; width:260px; border-radius:4px; border:1p
   border-radius: 4px;
   font-size: 1rem;
   transition: border-color 0.3s;
+  min-width: 0; /* prevent flex item overflow on mobile */
 }
 
 .code-input:focus {
@@ -333,6 +356,7 @@ form input[type="text"] { padding:8px; width:260px; border-radius:4px; border:1p
   font-weight: 600;
   cursor: pointer;
   transition: background-color 0.3s;
+  min-width: 0; /* allow shrinking within flex container */
 }
 
 .submit-button:hover {
@@ -351,3 +375,13 @@ footer { margin-top:12px; text-align:center; font-size:13px; opacity:0.8; }
 .results { width:100%; border-collapse: collapse; margin-top:12px; }
 .results th, .results td { padding:8px 10px; border:1px solid #ddd; text-align:left; font-size:14px; }
 .results thead th { background:#f0f0f0; font-weight:700; }
+
+/* Horizontal scroll helper for wide tables on narrow screens */
+.table-scroll { width: 100%; display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+/* Stack code input and button on small-to-medium phones */
+@media (max-width: 720px) {
+  .code-form .form-group { flex-direction: column; align-items: stretch; gap: 8px; }
+  .code-input { width: 100%; min-width: 0; }
+  .submit-button { width: 100%; height: 44px; }
+}
