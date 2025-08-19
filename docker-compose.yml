@@ -28,8 +28,8 @@ services:
         condition: service_healthy
     environment:
       - DATABASE_URL=postgres://postgres:Gkjp2025@db:5432/vote?sslmode=disable
-      - VOTE_START=2025-08-18T08:00:00+07:00
-      - VOTE_END=2025-08-20T23:00:00+07:00
+      - VOTE_START=2025-08-19T14:10:00+07:00
+      - VOTE_END=2025-08-19T14:15:00+07:00
       - ADMIN_USER=admin
       - ADMIN_PASS=Gkjp2025
       - PORT=8080
