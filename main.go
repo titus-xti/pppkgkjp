@@ -106,6 +106,8 @@ type ViewData struct {
 	Success     bool
 	Selected    string
 	Results     []VoteRow
+	Day         string
+	Time        string
 }
 
 type VoteRow struct {
@@ -245,6 +247,25 @@ func (a *App) indexHandler(w http.ResponseWriter, r *http.Request) {
 	} else if now.After(a.voteEnd) {
 		data.AfterEnd = true
 		data.Message = "Pemilihan ditutup."
+		// Prepare formatted Day and Time in WIB (Asia/Jakarta)
+		if loc, err := time.LoadLocation("Asia/Jakarta"); err == nil {
+			t := a.voteEnd.In(loc)
+			dayNames := []string{"Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"}
+			monthNames := []string{"Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"}
+			dayStr := dayNames[int(t.Weekday())]
+			dateStr := fmt.Sprintf("%02d %s %04d", t.Day(), monthNames[int(t.Month())-1], t.Year())
+			data.Day = fmt.Sprintf("%s %s", dayStr, dateStr)
+			data.Time = t.Format("15:04") + " WIB"
+		} else {
+			// Fallback to local time formatting if timezone load fails
+			t := a.voteEnd
+			dayNames := []string{"Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"}
+			monthNames := []string{"Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"}
+			dayStr := dayNames[int(t.Weekday())]
+			dateStr := fmt.Sprintf("%02d %s %04d", t.Day(), monthNames[int(t.Month())-1], t.Year())
+			data.Day = fmt.Sprintf("%s %s", dayStr, dateStr)
+			data.Time = t.Format("15:04") + " WIB"
+		}
 	}
 
 	// If we have a code, look up voter name and used status

@@ -16,6 +16,11 @@
           <h2>Selamat Datang, {{.Name}}!</h2>
         </div>
       {{end}}
+      {{if and (not .BeforeStart) (not .AfterEnd)}}
+        <div class="notice" id="remainingBox" style="margin-top: 8px;">
+          Pemilihan akan berakhir dalam <span id="remaining" data-end="{{.EndISO}}"></span>.<br/>Silahkan gunakan waktu pemilihan dengan sebaik mungkin
+        </div>
+      {{end}}
     </header>
 
     <main>
@@ -36,7 +41,7 @@
               <div id="countdown" data-start="{{.StartISO}}" data-end="{{.EndISO}}"></div>
             </div>
           {{else if .AfterEnd}}
-            <div class="notice">Pemilihan ditutup</div>
+            <div class="notice">Pemilihan telah ditutup pada <br/>{{.Day}} Jam {{.Time}}</div>
           {{else}}
             {{if .Name}}
               {{if .AlreadyUsed}}
@@ -177,6 +182,7 @@
     // Set up event listeners
     setupModal();
     setupCountdown();
+    setupRemaining();
   });
   
   // Set up modal event listeners
@@ -254,6 +260,30 @@
     
     updateCountdown();
     setInterval(updateCountdown, 1000);
+  }
+  
+  // Set up remaining time (active period) countdown
+  function setupRemaining() {
+    var el = document.getElementById('remaining');
+    if (!el) return;
+
+    var end = new Date(el.dataset.end);
+
+    function updateRemaining() {
+      var now = new Date();
+      var diff = end - now;
+      if (diff <= 0) {
+        el.innerText = '0 Jam 0 menit 0 detik';
+        return;
+      }
+      var hours = Math.floor(diff / (1000*60*60));
+      var minutes = Math.floor((diff % (1000*60*60)) / (1000*60));
+      var seconds = Math.floor((diff % (1000*60)) / 1000);
+      el.innerText = hours + ' Jam ' + minutes + ' menit ' + (seconds < 10 ? '0' + seconds : seconds) + ' detik';
+    }
+
+    updateRemaining();
+    setInterval(updateRemaining, 1000);
   }
   
   // Function to close the modal
