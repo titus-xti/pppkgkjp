@@ -13,12 +13,12 @@
       <h1>SURAT SUARA</h1>
       {{if .Name}}
         <div class="greeting">
-          <h2>Selamat Datang, {{.Name}}!</h2>
+          <h2>Selamat Datang,<br/>{{.Name}}</h2>
         </div>
       {{end}}
       {{if and (not .BeforeStart) (not .AfterEnd)}}
         <div class="notice" id="remainingBox" style="margin-top: 8px;">
-          Pemilihan akan berakhir dalam <span id="remaining" data-end="{{.EndISO}}"></span>.<br/>Silahkan gunakan waktu pemilihan dengan sebaik mungkin
+          Pemilihan online akan berakhir dalam <br><span id="remaining" data-end="{{.EndISO}}" style="color: red; font-weight: bold;"></span>
         </div>
       {{end}}
     </header>
@@ -30,18 +30,18 @@
         </div>
         <div class="meta">
           <div class="calon">Calon Pendeta GKJ Pamulang</div>
-          <div class="name">Bp. Faisha Sudarlin, M.Th</div>
+          <div class="name">Pnt. Faisha Sudarlin, M.Th</div>
         </div>
       </div>
 
       <div class="right">
         <div class="topbox" style="text-align: center;">
           {{if .BeforeStart}}
-            <div class="notice">Pemilihan belum dimulai<br><br>
-              <div id="countdown" data-start="{{.StartISO}}" data-end="{{.EndISO}}"></div>
+            <div class="notice">Pemilihan online belum dimulai<br>Akan di mulai dalam : <br>
+              <div id="countdown" data-start="{{.StartISO}}" data-end="{{.EndISO}}" style="color: red; font-weight: bold;"></div>
             </div>
           {{else if .AfterEnd}}
-            <div class="notice">Pemilihan telah ditutup pada <br/>{{.Day}} Jam {{.Time}}</div>
+            <div class="notice">Pemilihan online telah ditutup pada <br/>{{.Day}} Jam {{.Time}}</div>
           {{else}}
             {{if .Name}}
               {{if .AlreadyUsed}}
@@ -56,11 +56,13 @@
                 </div>
                 {{end}}
               {{else}}
+              <!-- Pemilihan online 
                 <div class="question-box">
                   <div class="question">
-                    <strong>Apakah anda SETUJU atau TIDAK SETUJU<br>Bp. Faisha Sudarlin, M.Th<br>Sebagai Pendeta Kedua GKJ Pamulang?</strong>
+                    <strong>Apakah anda SETUJU atau TIDAK SETUJU<br>Pnt. Faisha Sudarlin, M.Th<br>Sebagai Pendeta Kedua GKJ Pamulang?</strong>
                   </div>
                 </div>
+              -->
               {{end}}
             {{else}}
               <div id="code-entry" class="code-entry-container">
@@ -77,7 +79,7 @@
           {{end}}
         </div>
 
-        {{if and (not .BeforeStart) .Name (not .AlreadyUsed)}}
+        {{if and (not .BeforeStart) .Name (not .AlreadyUsed) (not .AfterEnd)}}
         <div class="choices" style="display: flex; justify-content: space-between; margin-top: 20px;">
           <div style="width: 100%;">
             <div style="display: flex; justify-content: space-around;">
@@ -101,7 +103,7 @@
     </main>
 
     <footer>
-      <p>Panitia Pemilihan Pendeta Kedua GKJ Pamulang</p>
+      <p style="text-align: center; font-size: 16px; font-weight: bold;">Panitia Pemilihan Pendeta Kedua GKJ Pamulang</p>
     </footer>
   </div>
 
@@ -255,7 +257,7 @@
       var hrs = Math.floor((diff % (1000*60*60*24)) / (1000*60*60));
       var min = Math.floor((diff % (1000*60*60)) / (1000*60));
       var sec = Math.floor((diff % (1000*60)) / 1000);
-      cd.innerText = "Pemilihan di mulai dalam : " + days + "hari " + hrs + "jam " + min + "menit " + sec + "detik";
+      cd.innerText =  days + " hari " + hrs + " jam " + min + "menit " + sec + " detik";
     }
     
     updateCountdown();
@@ -491,7 +493,7 @@
         var hrs = Math.floor((diff % (1000*60*60*24)) / (1000*60*60));
         var min = Math.floor((diff % (1000*60*60)) / (1000*60));
         var sec = Math.floor((diff % (1000*60)) / 1000);
-        cd.innerText = "Pemilihan di mulai dalam : " + days + "hari " + hrs + "jam " + min + "menit " + sec + "detik";
+        cd.innerText =  days + " hari " + hrs + " jam " + min + " menit " + sec + " detik";
       }
       
       updateCountdown();
