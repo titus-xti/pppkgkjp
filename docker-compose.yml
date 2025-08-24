@@ -54,10 +54,3 @@ services:
     ports:
       - "80:80"
     restart: unless-stopped
-    networks:
-      - default
-      - pppk-autoreply_default
-
-networks:
-  pppk-autoreply_default:
-    external: true
