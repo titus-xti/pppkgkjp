@@ -91,6 +91,8 @@ type VoterInfo struct {
 	Used    bool
 	UsedAt  string
 	Choice  string
+	Wilayah string
+	Phone   string
 }
 
 type ViewData struct {
@@ -397,7 +399,7 @@ func (a *App) adminHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ctx := context.Background()
-	
+
 	// Get total voters count
 	var totalVoters int
 	err := a.db.QueryRow(ctx, "SELECT COUNT(*) FROM voters").Scan(&totalVoters)
@@ -427,9 +429,9 @@ func (a *App) adminHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Get all voters with their details
 	rows, err := a.db.Query(ctx, `
-		SELECT code, name, used, COALESCE(used_at::text, '') AS used_at_text, COALESCE(vote_choice::text, '') AS vote_choice_text
-		FROM voters 
-		ORDER BY used_at NULLS LAST, id`)
+		SELECT code, vm.name, used, COALESCE(used_at::text, '') AS used_at_text, COALESCE(vote_choice::text, '') AS vote_choice_text, vm.wilayah, v.phone
+		FROM voters v inner join vote_master vm on v.phone =vm.phone 
+		ORDER BY used_at NULLS last, v.id`)
 	if err != nil {
 		fmt.Println("error getting voters:", err)
 		http.Error(w, "database error", http.StatusInternalServerError)
@@ -441,7 +443,7 @@ func (a *App) adminHandler(w http.ResponseWriter, r *http.Request) {
 
 	for rows.Next() {
 		var v VoterInfo
-		err := rows.Scan(&v.Code, &v.Name, &v.Used, &v.UsedAt, &v.Choice)
+		err := rows.Scan(&v.Code, &v.Name, &v.Used, &v.UsedAt, &v.Choice, &v.Wilayah, &v.Phone)
 		if err != nil {
 			fmt.Println("error scanning voter:", err)
 			continue

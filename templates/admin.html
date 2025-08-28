@@ -129,7 +129,7 @@
 <body>
   <div class="container">
     <header>
-      <h1>Admin - Hasil Pemilihan</h1>
+      <h1>Hasil Pemilihan Online</h1>
     </header>
     <main class="admin-main">
       <!-- 1) Recap total peserta -->
@@ -169,6 +169,8 @@
             <th>No</th>
             <th>Kode</th>
             <th>Nama</th>
+            <th>Wilayah</th>
+            <th>No HP</th>
             <th>Status</th>
             <th>Waktu Memilih</th>
             <th>Pilihan</th>
@@ -180,6 +182,8 @@
             <td>{{$i}}</td>
             <td>{{$voter.Code}}</td>
             <td>{{$voter.Name}}</td>
+            <td>{{$voter.Wilayah}}</td>
+            <td>{{$voter.Phone}}</td>
             <td>{{if $voter.Used}}Sudah Memilih{{else}}Belum Memilih{{end}}</td>
             <td>{{$voter.UsedAt}}</td>
             <td>{{$voter.Choice}}</td>
