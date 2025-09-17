@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"embed"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"html/template"
 	"log"
@@ -23,27 +24,6 @@ var templatesFS embed.FS
 
 //go:embed static/*
 var staticFS embed.FS
-
-// loadTemplates loads templates from the filesystem if in development mode, otherwise uses embedded FS
-func loadTemplates(useFS bool) (*template.Template, error) {
-	// Create a new template with the add function
-	tmpl := template.New("").Funcs(template.FuncMap{
-		"add": func(a, b int) int { return a + b },
-	})
-
-	var err error
-	if useFS {
-		tmpl, err = tmpl.ParseGlob("templates/*.html")
-	} else {
-		tmpl, err = tmpl.ParseFS(templatesFS, "templates/*.html")
-	}
-
-	if err != nil {
-		return nil, fmt.Errorf("error parsing templates: %v", err)
-	}
-
-	return tmpl, nil
-}
 
 // parseTemplates parses templates with the given functions
 func parseTemplates(useFS bool) (*template.Template, error) {
@@ -201,6 +181,9 @@ func main() {
 	http.HandleFunc("/", app.indexHandler)
 	http.HandleFunc("/vote", app.voteHandler)
 	http.HandleFunc("/admin", app.adminHandler)
+	http.HandleFunc("/status", app.statusHandler)
+	http.HandleFunc("/count", app.countHandler)
+	http.HandleFunc("/api/vote/offline", app.offlineVoteHandler)
 
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -365,6 +348,89 @@ func (a *App) voteHandler(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/"+code+"?success=1", http.StatusSeeOther)
 }
 
+type VoteRequest struct {
+	Choice string `json:"choice"`
+}
+
+func (a *App) offlineVoteHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	// Check basic auth for offline voting
+	user, pass, ok := r.BasicAuth()
+	if !ok || !basicAuthValid(r, user, pass) {
+		w.Header().Set("WWW-Authenticate", `Basic realm="restricted", charset="UTF-8"`)
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	switch r.Method {
+	case http.MethodPost:
+		// Handle vote submission
+		var req VoteRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "Invalid request body", http.StatusBadRequest)
+			return
+		}
+
+		if req.Choice == "" {
+			http.Error(w, "pilihan diperlukan", http.StatusBadRequest)
+			return
+		}
+
+		// Insert the vote
+		_, err := a.db.Exec(ctx, `
+			INSERT INTO offline_voters (vote_choice)
+			VALUES ($1)
+		`, req.Choice)
+
+		if err != nil {
+			http.Error(w, "Gagal menyimpan suara", http.StatusInternalServerError)
+			log.Printf("db insert error: %v", err)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"success": true,
+			"message": fmt.Sprintf("Suara %s berhasil ditambahkan", req.Choice),
+		})
+
+	case http.MethodDelete:
+		// Handle vote deletion
+		choice := r.URL.Query().Get("choice")
+		if choice == "" {
+			http.Error(w, "pilihan diperlukan", http.StatusBadRequest)
+			return
+		}
+
+		// Find and delete the most recent vote for this choice
+		_, err := a.db.Exec(ctx, `
+			DELETE FROM offline_voters 
+			WHERE ctid IN (
+				SELECT ctid FROM offline_voters 
+				WHERE vote_choice = $1
+				ORDER BY used_at DESC NULLS LAST
+				LIMIT 1
+			)
+		`, choice)
+
+		if err != nil {
+			http.Error(w, "Gagal menghapus suara", http.StatusInternalServerError)
+			log.Printf("db delete error: %v", err)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"success": true,
+			"message": fmt.Sprintf("Suara %s berhasil dikoreksi", choice),
+		})
+
+	default:
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+	}
+}
+
 func basicAuthValid(r *http.Request, user, pass string) bool {
 	// If admin credentials not set, disallow access
 	if user == "" || pass == "" {
@@ -486,6 +552,153 @@ func (a *App) adminHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Execute the template
 	if err := a.tmpl.ExecuteTemplate(w, "admin.html", data); err != nil {
+		fmt.Println("error executing template:", err)
+		http.Error(w, "template error", http.StatusInternalServerError)
+	}
+}
+
+func (a *App) statusHandler(w http.ResponseWriter, r *http.Request) {
+
+	ctx := context.Background()
+
+	// Get voted count online
+	var votedCount, setujuCount, tidakSetujuCount, votedCountOffline, setujuCountOffline, tidakSetujuCountOffline, errorCountOffline int
+	err := a.db.QueryRow(ctx, `
+		SELECT 
+			COUNT(*) FILTER (WHERE used = true) as voted_count,
+			COUNT(*) FILTER (WHERE vote_choice = 'setuju') as setuju_count,
+			COUNT(*) FILTER (WHERE vote_choice = 'tidak_setuju') as tidak_setuju_count
+		FROM voters`).
+		Scan(&votedCount, &setujuCount, &tidakSetujuCount)
+
+	if err != nil {
+		fmt.Println("error getting voting stats:", err)
+		http.Error(w, "database error", http.StatusInternalServerError)
+		return
+	}
+
+	err = a.db.QueryRow(ctx, `
+        SELECT 
+            COUNT(*) FILTER (WHERE vote_choice = 'tidak_sah') as error_count,
+            COUNT(*) FILTER (WHERE vote_choice = 'setuju') as setuju_count,
+            COUNT(*) FILTER (WHERE vote_choice = 'tidak_setuju') as tidak_setuju_count
+        FROM offline_voters`).
+		Scan(&errorCountOffline, &setujuCountOffline, &tidakSetujuCountOffline)
+
+	if err != nil {
+		fmt.Println("error getting voting stats:", err)
+		http.Error(w, "database error", http.StatusInternalServerError)
+		return
+	}
+
+	// Calculate offline voted count
+	votedCountOffline = setujuCountOffline + tidakSetujuCountOffline + errorCountOffline
+
+	// Prepare data for template
+	data := struct {
+		VotedCount              int
+		SetujuCount             int
+		TidakSetujuCount        int
+		VotedCountOffline       int
+		SetujuCountOffline      int
+		TidakSetujuCountOffline int
+		ErrorCountOffline       int
+		VotedCountTotal         int
+		SetujuCountTotal        int
+		TidakSetujuCountTotal   int
+		ErrorCountTotal         int
+	}{
+		VotedCount:              votedCount,
+		SetujuCount:             setujuCount,
+		TidakSetujuCount:        tidakSetujuCount,
+		VotedCountOffline:       votedCountOffline,
+		SetujuCountOffline:      setujuCountOffline,
+		TidakSetujuCountOffline: tidakSetujuCountOffline,
+		ErrorCountOffline:       errorCountOffline,
+		VotedCountTotal:         votedCount + votedCountOffline,
+		SetujuCountTotal:        setujuCount + setujuCountOffline,
+		TidakSetujuCountTotal:   tidakSetujuCount + tidakSetujuCountOffline,
+		ErrorCountTotal:         errorCountOffline,
+	}
+
+	// Execute the template
+	if err := a.tmpl.ExecuteTemplate(w, "status.html", data); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
+func (a *App) countHandler(w http.ResponseWriter, r *http.Request) {
+	// basic auth
+	if !basicAuthValid(r, a.adminUser, a.adminPass) {
+		w.Header().Set("WWW-Authenticate", `Basic realm="Admin Area"`)
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	ctx := context.Background()
+
+	// Get voted count online
+	var votedCount, setujuCount, tidakSetujuCount, votedCountOffline, setujuCountOffline, tidakSetujuCountOffline, errorCountOffline int
+	err := a.db.QueryRow(ctx, `
+        SELECT 
+            COUNT(*) FILTER (WHERE used = true) as voted_count,
+            COUNT(*) FILTER (WHERE vote_choice = 'setuju') as setuju_count,
+            COUNT(*) FILTER (WHERE vote_choice = 'tidak_setuju') as tidak_setuju_count
+        FROM voters`).
+		Scan(&votedCount, &setujuCount, &tidakSetujuCount)
+
+	if err != nil {
+		fmt.Println("error getting voting stats:", err)
+		http.Error(w, "database error", http.StatusInternalServerError)
+		return
+	}
+
+	err = a.db.QueryRow(ctx, `
+        SELECT 
+            COUNT(*) FILTER (WHERE vote_choice = 'tidak_sah') as error_count,
+            COUNT(*) FILTER (WHERE vote_choice = 'setuju') as setuju_count,
+            COUNT(*) FILTER (WHERE vote_choice = 'tidak_setuju') as tidak_setuju_count
+        FROM offline_voters`).
+		Scan(&errorCountOffline, &setujuCountOffline, &tidakSetujuCountOffline)
+
+	if err != nil {
+		fmt.Println("error getting voting stats:", err)
+		http.Error(w, "database error", http.StatusInternalServerError)
+		return
+	}
+
+	// Calculate offline voted count
+	votedCountOffline = setujuCountOffline + tidakSetujuCountOffline + errorCountOffline
+
+	// Prepare data for template
+	data := struct {
+		VotedCount              int
+		SetujuCount             int
+		TidakSetujuCount        int
+		VotedCountOffline       int
+		SetujuCountOffline      int
+		TidakSetujuCountOffline int
+		ErrorCountOffline       int
+		VotedCountTotal         int
+		SetujuCountTotal        int
+		TidakSetujuCountTotal   int
+		ErrorCountTotal         int
+	}{
+		VotedCount:              votedCount,
+		SetujuCount:             setujuCount,
+		TidakSetujuCount:        tidakSetujuCount,
+		VotedCountOffline:       votedCountOffline,
+		SetujuCountOffline:      setujuCountOffline,
+		TidakSetujuCountOffline: tidakSetujuCountOffline,
+		ErrorCountOffline:       errorCountOffline,
+		VotedCountTotal:         votedCount + votedCountOffline,
+		SetujuCountTotal:        setujuCount + setujuCountOffline,
+		TidakSetujuCountTotal:   tidakSetujuCount + tidakSetujuCountOffline,
+		ErrorCountTotal:         errorCountOffline,
+	}
+
+	// Execute the template
+	if err := a.tmpl.ExecuteTemplate(w, "count.html", data); err != nil {
 		fmt.Println("error executing template:", err)
 		http.Error(w, "template error", http.StatusInternalServerError)
 	}
