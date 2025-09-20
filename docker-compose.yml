@@ -31,7 +31,9 @@ services:
       - VOTE_START=2025-09-25T00:00:00+07:00
       - VOTE_END=2025-09-28T00:00:00+07:00
       - ADMIN_USER=admin
-      - ADMIN_PASS=Gkjp2025
+      - ADMIN_PASS=zaqwsx
+      - COUNT_USER=admin
+      - COUNT_PASS=scxat333
       - PORT=8080
       - DEV=1
     ports:
