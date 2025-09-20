@@ -52,6 +52,8 @@ type App struct {
 	voteEnd   time.Time
 	adminUser string
 	adminPass string
+	countUser string
+	countPass string
 }
 
 type AdminData struct {
@@ -175,6 +177,8 @@ func main() {
 		voteEnd:   voteEnd,
 		adminUser: os.Getenv("ADMIN_USER"),
 		adminPass: os.Getenv("ADMIN_PASS"),
+		countUser: os.Getenv("COUNT_USER"),
+		countPass: os.Getenv("COUNT_PASS"),
 	}
 
 	http.Handle("/static/", http.FileServer(http.FS(staticFS)))
@@ -629,7 +633,7 @@ func (a *App) statusHandler(w http.ResponseWriter, r *http.Request) {
 
 func (a *App) countHandler(w http.ResponseWriter, r *http.Request) {
 	// basic auth
-	if !basicAuthValid(r, a.adminUser, a.adminPass) {
+	if !basicAuthValid(r, a.countUser, a.countPass) {
 		w.Header().Set("WWW-Authenticate", `Basic realm="Admin Area"`)
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
